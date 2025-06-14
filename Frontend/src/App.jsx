@@ -7,12 +7,13 @@ import Dashboard from './pages/Dashboard';
 import { AuthProvider } from './context/authContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
+import { TaskProvider } from './context/taskContext';
 
 function App() {
   return (
     <AuthProvider>
+      <TaskProvider>
       <Router>
-        <Navbar />
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
@@ -23,6 +24,7 @@ function App() {
           } />
         </Routes>
       </Router>
+      </TaskProvider>
     </AuthProvider>
   );
 }

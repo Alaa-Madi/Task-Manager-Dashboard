@@ -138,7 +138,7 @@ const Dashboard = () => {
   return (
     <>
       <Navbar />
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
+      <Container maxWidth="xl" sx={{ mt: 4, mb: 8 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" fontWeight="bold">Task Dashboard</Typography>
           <Button 
@@ -245,7 +245,7 @@ const Dashboard = () => {
 
         {/* Task Form */}
         <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
-          <Typography variant="h6" gutterBottom>Add New Task</Typography>
+          <Typography sx={{display:'flex',justifyContent:'start'}} variant="h4" gutterBottom>Add New Task</Typography>
           <TaskForm onTaskAdded={refreshStats} />
         </Paper>
 

@@ -1,79 +1,120 @@
 import React, { createContext, useReducer } from 'react';
 import axios from 'axios';
 
+// Create context
+export const TaskContext = createContext();
+
+// Initial state
 const initialState = {
   tasks: [],
   loading: false,
   error: null,
-  statistics: {},
-  useMockData: false,
 };
 
-const TaskContext = createContext();
-
+// Reducer
 const taskReducer = (state, action) => {
   switch (action.type) {
-    case 'SET_LOADING':
-      return { ...state, loading: true, error: null };
-    case 'GET_TASKS_SUCCESS':
+    case 'SET_TASKS':
+      return { ...state, tasks: action.payload, loading: false };
+    case 'ADD_TASK':
+      return { ...state, tasks: [action.payload, ...state.tasks], loading: false };
+    case 'UPDATE_TASK':
       return {
         ...state,
+        tasks: state.tasks.map((task) =>
+          task._id === action.payload._id ? action.payload : task
+        ),
         loading: false,
-        tasks: action.payload.tasks,
-        statistics: action.payload.statistics,
       };
-    case 'ADD_TASK_SUCCESS':
+    case 'DELETE_TASK':
       return {
         ...state,
-        tasks: [action.payload, ...state.tasks],
+        tasks: state.tasks.filter((task) => task._id !== action.payload._id),
+        loading: false,
       };
+    case 'SET_LOADING':
+      return { ...state, loading: true };
     case 'SET_ERROR':
-      return { ...state, loading: false, error: action.payload };
+      return { ...state, error: action.payload, loading: false };
     default:
       return state;
   }
 };
 
+// Provider
 export const TaskProvider = ({ children }) => {
   const [state, dispatch] = useReducer(taskReducer, initialState);
+  const API_URL = 'http://localhost:5000/api/tasks';
 
+  // Get token from localStorage
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    };
+  };
+
+  // Get all tasks
   const getTasks = async () => {
+    dispatch({ type: 'SET_LOADING' });
     try {
-      dispatch({ type: 'SET_LOADING' });
-      const res = await axios.get('/api/tasks');
-      const tasks = res.data;
-      const statistics = {
-        total: tasks.length,
-        completed: tasks.filter(t => t.status === 'done').length,
-        inProgress: tasks.filter(t => t.status === 'in-progress').length,
-        pending: tasks.filter(t => t.status === 'todo').length,
-        highPriority: tasks.filter(t => t.priority === 'high').length,
-        dueSoon: tasks.filter(t => {
-          const due = new Date(t.dueDate);
-          const now = new Date();
-          return (due - now) / (1000 * 3600 * 24) <= 3;
-        }).length,
-      };
-      dispatch({ type: 'GET_TASKS_SUCCESS', payload: { tasks, statistics } });
+      const res = await axios.get(API_URL, getAuthHeaders());
+      dispatch({ type: 'SET_TASKS', payload: res.data });
     } catch (err) {
+      console.error('Error fetching tasks:', err.message);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to fetch tasks' });
     }
   };
 
-  const addTask = async (task) => {
+  // Add task
+  const addTask = async (taskData) => {
+    dispatch({ type: 'SET_LOADING' });
     try {
-const res = await axios.post('http://localhost:5000/api/tasks', task);
-      dispatch({ type: 'ADD_TASK_SUCCESS', payload: res.data });
+      const res = await axios.post(API_URL, taskData, getAuthHeaders());
+      dispatch({ type: 'ADD_TASK', payload: res.data });
     } catch (err) {
+      console.error('Error adding task:', err.message);
       dispatch({ type: 'SET_ERROR', payload: 'Failed to add task' });
     }
   };
 
+  // Update task
+  const updateTask = async (id, updatedData) => {
+    dispatch({ type: 'SET_LOADING' });
+    try {
+      const res = await axios.put(`${API_URL}/${id}`, updatedData, getAuthHeaders());
+      dispatch({ type: 'UPDATE_TASK', payload: res.data });
+    } catch (err) {
+      console.error('Error updating task:', err.message);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to update task' });
+    }
+  };
+
+  // Delete task
+  const deleteTask = async (id) => {
+    dispatch({ type: 'SET_LOADING' });
+    try {
+      await axios.delete(`${API_URL}/${id}`, getAuthHeaders());
+      dispatch({ type: 'DELETE_TASK', payload: { _id: id } });
+    } catch (err) {
+      console.error('Error deleting task:', err.message);
+      dispatch({ type: 'SET_ERROR', payload: 'Failed to delete task' });
+    }
+  };
+
   return (
-    <TaskContext.Provider value={{ ...state, getTasks, addTask }}>
+    <TaskContext.Provider
+      value={{
+        ...state,
+        getTasks,
+        addTask,
+        updateTask,
+        deleteTask,
+      }}
+    >
       {children}
     </TaskContext.Provider>
   );
 };
-
-export { TaskContext };

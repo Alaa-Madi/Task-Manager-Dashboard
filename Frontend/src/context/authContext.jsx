@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState } from 'react';
 import axios from 'axios';
 
 export const AuthContext = createContext();
@@ -10,13 +10,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await axios.post('http://localhost:5000/api/auth/signup', {
         email,
-        password,
+        password
       });
-      setUser(res.data.user);
       localStorage.setItem('token', res.data.token);
+      setUser(res.data.user);
       return true;
-    } catch (error) {
-      console.error("Signup Error:", error);
+    } catch (err) {
+      console.error('Signup Error:', err);
       return false;
     }
   };
@@ -25,24 +25,19 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await axios.post('http://localhost:5000/api/auth/login', {
         email,
-        password,
+        password
       });
-      setUser(res.data.user);
       localStorage.setItem('token', res.data.token);
+      setUser(res.data.user);
       return true;
-    } catch (error) {
-      console.error("Login Error:", error);
+    } catch (err) {
+      console.error('Login Error:', err);
       return false;
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('token');
-  };
-
   return (
-    <AuthContext.Provider value={{ user, signup, login, logout }}>
+    <AuthContext.Provider value={{ user, signup, login }}>
       {children}
     </AuthContext.Provider>
   );

@@ -44,13 +44,15 @@ const taskReducer = (state, action) => {
 // Provider
 export const TaskProvider = ({ children }) => {
   const [state, dispatch] = useReducer(taskReducer, initialState);
-const API_URL = 'http://localhost:5000/api/tasks'; // Should NOT include /stats here
-  // Get token from localStorage
+  const API_URL = 'http://localhost:5000/api/tasks';
+
+  // Get auth headers
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
     return {
       headers: {
         Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
       },
     };
   };
@@ -63,7 +65,10 @@ const API_URL = 'http://localhost:5000/api/tasks'; // Should NOT include /stats 
       dispatch({ type: 'SET_TASKS', payload: res.data });
     } catch (err) {
       console.error('Error fetching tasks:', err.message);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to fetch tasks' });
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: err.response?.data?.message || 'Failed to fetch tasks' 
+      });
     }
   };
 
@@ -73,9 +78,14 @@ const API_URL = 'http://localhost:5000/api/tasks'; // Should NOT include /stats 
     try {
       const res = await axios.post(API_URL, taskData, getAuthHeaders());
       dispatch({ type: 'ADD_TASK', payload: res.data });
+      return res.data;
     } catch (err) {
       console.error('Error adding task:', err.message);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to add task' });
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: err.response?.data?.message || 'Failed to add task' 
+      });
+      throw err;
     }
   };
 
@@ -85,10 +95,20 @@ const API_URL = 'http://localhost:5000/api/tasks'; // Should NOT include /stats 
     try {
       const res = await axios.put(`${API_URL}/${id}`, updatedData, getAuthHeaders());
       dispatch({ type: 'UPDATE_TASK', payload: res.data });
+      return res.data;
     } catch (err) {
       console.error('Error updating task:', err.message);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to update task' });
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: err.response?.data?.message || 'Failed to update task' 
+      });
+      throw err;
     }
+  };
+
+  // Update task status
+  const updateTaskStatus = async (id, newStatus) => {
+    return updateTask(id, { status: newStatus });
   };
 
   // Delete task
@@ -99,43 +119,35 @@ const API_URL = 'http://localhost:5000/api/tasks'; // Should NOT include /stats 
       dispatch({ type: 'DELETE_TASK', payload: { _id: id } });
     } catch (err) {
       console.error('Error deleting task:', err.message);
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to delete task' });
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: err.response?.data?.message || 'Failed to delete task' 
+      });
+      throw err;
     }
   };
-const getStatistics = async () => {
-  try {
-    const res = await axios.get(`${API_URL}/stats`, getAuthHeaders());
-    return res.data;
-  } catch (err) {
-    console.error('Stats Error:', err.response?.data?.message || err.message);
-    throw err; 
-  }
-};
-const updateTaskStatus = async (id, newStatus) => {
-  dispatch({ type: 'SET_LOADING' });
-  try {
-    const res = await axios.put(
-      `${API_URL}/${id}`, 
-      { status: newStatus },
-      getAuthHeaders()
-    );
-    dispatch({ type: 'UPDATE_TASK', payload: res.data });
-  } catch (err) {
-    console.error('Error updating task status:', err.message);
-    dispatch({ type: 'SET_ERROR', payload: 'Failed to update task status' });
-  }
-};
+
+  // Get statistics
+  const getStatistics = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/stats`, getAuthHeaders());
+      return res.data;
+    } catch (err) {
+      console.error('Error fetching statistics:', err.message);
+      throw err;
+    }
+  };
 
   return (
     <TaskContext.Provider
       value={{
         ...state,
-        updateTaskStatus,
-        getStatistics,
         getTasks,
         addTask,
         updateTask,
+        updateTaskStatus,
         deleteTask,
+        getStatistics
       }}
     >
       {children}

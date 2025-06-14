@@ -6,9 +6,10 @@ const {
   createTask,
   updateTask,
   deleteTask,
+  getTaskStatistics 
 } = require('../controllers/taskController');
 
-// Protect all routes
+router.get('/stats', auth, getTaskStatistics);
 router.get('/', auth, getTasks);
 router.post('/', auth, createTask);
 router.put('/:id', auth, updateTask);

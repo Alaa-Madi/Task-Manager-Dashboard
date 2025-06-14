@@ -44,8 +44,7 @@ const taskReducer = (state, action) => {
 // Provider
 export const TaskProvider = ({ children }) => {
   const [state, dispatch] = useReducer(taskReducer, initialState);
-  const API_URL = 'http://localhost:5000/api/tasks';
-
+const API_URL = 'http://localhost:5000/api/tasks'; // Should NOT include /stats here
   // Get token from localStorage
   const getAuthHeaders = () => {
     const token = localStorage.getItem('token');
@@ -103,11 +102,36 @@ export const TaskProvider = ({ children }) => {
       dispatch({ type: 'SET_ERROR', payload: 'Failed to delete task' });
     }
   };
+const getStatistics = async () => {
+  try {
+    const res = await axios.get(`${API_URL}/stats`, getAuthHeaders());
+    return res.data;
+  } catch (err) {
+    console.error('Stats Error:', err.response?.data?.message || err.message);
+    throw err; 
+  }
+};
+const updateTaskStatus = async (id, newStatus) => {
+  dispatch({ type: 'SET_LOADING' });
+  try {
+    const res = await axios.put(
+      `${API_URL}/${id}`, 
+      { status: newStatus },
+      getAuthHeaders()
+    );
+    dispatch({ type: 'UPDATE_TASK', payload: res.data });
+  } catch (err) {
+    console.error('Error updating task status:', err.message);
+    dispatch({ type: 'SET_ERROR', payload: 'Failed to update task status' });
+  }
+};
 
   return (
     <TaskContext.Provider
       value={{
         ...state,
+        updateTaskStatus,
+        getStatistics,
         getTasks,
         addTask,
         updateTask,

@@ -10,8 +10,10 @@ const TaskCard = ({ task }) => {
       <CardContent>
         <Typography variant="h6">{task.title}</Typography>
         <Typography variant="body2" color="text.secondary">{task.description}</Typography>
-        <Typography variant="caption" display="block">Status: {task.status}</Typography>
-        <Stack direction="row" spacing={1} mt={2}>
+        <Typography variant="caption" display="block">
+          Status: {task.status === 'todo' ? 'To Do' :
+            task.status === 'in-progress' ? 'In Progress' : 'Done'}
+        </Typography>        <Stack direction="row" spacing={1} mt={2}>
           <Button variant="contained" size="small" onClick={() => updateTaskStatus(task._id)}>Update</Button>
           <Button variant="outlined" color="error" size="small" onClick={() => deleteTask(task._id)}>Delete</Button>
         </Stack>

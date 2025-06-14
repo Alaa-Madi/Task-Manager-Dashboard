@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { 
   Container, 
   Grid, 
@@ -12,7 +12,8 @@ import {
   Divider,
   Chip,
   LinearProgress,
-  useTheme
+  useTheme,
+  Button
 } from '@mui/material';
 import { 
   CheckCircle as CheckCircleIcon,
@@ -20,7 +21,8 @@ import {
   Loop as LoopIcon,
   PriorityHigh as PriorityHighIcon,
   AccessTime as AccessTimeIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { TaskContext } from '../context/taskContext';
 import TaskCard from '../components/TaskCard';
@@ -28,15 +30,47 @@ import TaskForm from '../components/TaskForm';
 import Navbar from '../components/Navbar';
 
 const Dashboard = () => {
-  const { tasks, getTasks, loading, error, statistics, useMockData } = useContext(TaskContext);
+  const { tasks, getTasks, loading, error, getStatistics } = useContext(TaskContext);
   const theme = useTheme();
+  const [stats, setStats] = useState({
+    total: 0,
+    completed: 0,
+    pending: 0,
+    inProgress: 0,
+    highPriority: 0,
+    dueSoon: 0
+  });
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [statsError, setStatsError] = useState(null);
 
   useEffect(() => {
-    getTasks();
+    const fetchData = async () => {
+      try {
+        await getTasks();
+        await refreshStats();
+      } catch (err) {
+        setStatsError('Failed to load dashboard data');
+        console.error('Dashboard data error:', err);
+      }
+    };
+    fetchData();
   }, []);
 
-  const completionPercentage = statistics?.total > 0 
-    ? Math.round((statistics.completed / statistics.total) * 100) 
+  const refreshStats = async () => {
+  setIsLoadingStats(true);
+  setStatsError(null);
+  try {
+    const statsData = await getStatistics();
+    setStats(statsData);
+  } catch (err) {
+    setStatsError(err.response?.data?.message || 'Failed to load statistics');
+  } finally {
+    setIsLoadingStats(false);
+  }
+};
+
+  const completionPercentage = stats.total > 0 
+    ? Math.round((stats.completed / stats.total) * 100) 
     : 0;
 
   if (loading && tasks.length === 0) {
@@ -59,108 +93,73 @@ const Dashboard = () => {
       <Container maxWidth="lg" sx={{ mt: 4, mb: 8 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography variant="h4" fontWeight="bold">Task Dashboard</Typography>
-          {useMockData && (
-            <Chip 
-              label="Using Sample Data" 
-              color="warning" 
-              variant="outlined" 
-              size="small"
-            />
-          )}
+          <Button 
+            variant="outlined" 
+            onClick={refreshStats}
+            disabled={isLoadingStats}
+            startIcon={isLoadingStats ? <CircularProgress size={20} /> : <RefreshIcon />}
+          >
+            Refresh Stats
+          </Button>
         </Box>
 
-        {error && (
-          <Alert severity="warning" sx={{ mb: 3 }}>
-            {error}
+        {(error || statsError) && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error || statsError}
           </Alert>
         )}
 
+        {/* Statistics Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={2}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <AssignmentIcon color="primary" sx={{ fontSize: 40 }} />
-                <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
-                  {statistics?.total || 0}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Total Tasks
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={2}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <CheckCircleIcon sx={{ fontSize: 40, color: theme.palette.success.main }} />
-                <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
-                  {statistics?.completed || 0}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Completed
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={2}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <LoopIcon sx={{ fontSize: 40, color: theme.palette.info.main }} />
-                <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
-                  {statistics?.inProgress || 0}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  In Progress
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={2}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <PendingIcon sx={{ fontSize: 40, color: theme.palette.warning.main }} />
-                <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
-                  {statistics?.pending || 0}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Pending
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={2}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <PriorityHighIcon sx={{ fontSize: 40, color: theme.palette.error.main }} />
-                <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
-                  {statistics?.highPriority || 0}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  High Priority
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          <Grid item xs={12} sm={6} md={4} lg={2}>
-            <Card elevation={2}>
-              <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                <AccessTimeIcon sx={{ fontSize: 40, color: theme.palette.secondary.main }} />
-                <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
-                  {statistics?.dueSoon || 0}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Due Soon
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+          {[
+            { 
+              icon: <AssignmentIcon color="primary" sx={{ fontSize: 40 }} />,
+              value: stats.total,
+              label: 'Total Tasks'
+            },
+            { 
+              icon: <CheckCircleIcon sx={{ fontSize: 40, color: theme.palette.success.main }} />,
+              value: stats.completed,
+              label: 'Completed'
+            },
+            { 
+              icon: <LoopIcon sx={{ fontSize: 40, color: theme.palette.info.main }} />,
+              value: stats.inProgress,
+              label: 'In Progress'
+            },
+            { 
+              icon: <PendingIcon sx={{ fontSize: 40, color: theme.palette.warning.main }} />,
+              value: stats.pending,
+              label: 'Pending'
+            },
+            { 
+              icon: <PriorityHighIcon sx={{ fontSize: 40, color: theme.palette.error.main }} />,
+              value: stats.highPriority,
+              label: 'High Priority'
+            },
+            { 
+              icon: <AccessTimeIcon sx={{ fontSize: 40, color: theme.palette.secondary.main }} />,
+              value: stats.dueSoon,
+              label: 'Due Soon'
+            },
+          ].map((stat, index) => (
+            <Grid item xs={12} sm={6} md={4} lg={2} key={index}>
+              <Card elevation={2}>
+                <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                  {stat.icon}
+                  <Typography variant="h5" fontWeight="bold" sx={{ mt: 1 }}>
+                    {stat.value}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {stat.label}
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
         </Grid>
 
+        {/* Completion Progress */}
         <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
             <Typography variant="h6">Task Completion</Typography>
@@ -169,11 +168,22 @@ const Dashboard = () => {
           <LinearProgress 
             variant="determinate" 
             value={completionPercentage} 
-            sx={{ height: 10, borderRadius: 5 }}
+            sx={{ 
+              height: 10, 
+              borderRadius: 5,
+              backgroundColor: theme.palette.grey[300],
+              '& .MuiLinearProgress-bar': {
+                backgroundColor: completionPercentage >= 80 
+                  ? theme.palette.success.main 
+                  : completionPercentage >= 50 
+                    ? theme.palette.info.main 
+                    : theme.palette.warning.main
+              }
+            }}
           />
           <Box display="flex" justifyContent="space-between" mt={1}>
             <Typography variant="body2" color="text.secondary">
-              {statistics?.completed || 0} of {statistics?.total || 0} tasks completed
+              {stats.completed} of {stats.total} tasks completed
             </Typography>
             {completionPercentage >= 80 ? (
               <Typography variant="body2" color="success.main">Great progress!</Typography>
@@ -185,13 +195,20 @@ const Dashboard = () => {
           </Box>
         </Paper>
 
+        {/* Task Form */}
         <Paper elevation={2} sx={{ p: 3, mb: 4 }}>
           <Typography variant="h6" gutterBottom>Add New Task</Typography>
-          <TaskForm />
+          <TaskForm onTaskAdded={refreshStats} />
         </Paper>
 
+        {/* Task List */}
         <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>My Tasks</Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6" gutterBottom>My Tasks</Typography>
+            <Typography variant="subtitle2" color="text.secondary">
+              Showing {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+            </Typography>
+          </Box>
           <Divider sx={{ mb: 3 }} />
           
           {tasks.length === 0 ? (
@@ -203,8 +220,12 @@ const Dashboard = () => {
           ) : (
             <Grid container spacing={2}>
               {tasks.map((task) => (
-                <Grid item xs={12} sm={6} key={task._id}>
-                  <TaskCard task={task} />
+                <Grid item xs={12} sm={6} md={4} key={task._id}>
+                  <TaskCard 
+                    task={task} 
+                    onTaskUpdated={refreshStats}
+                    onTaskDeleted={refreshStats}
+                  />
                 </Grid>
               ))}
             </Grid>

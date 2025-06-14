@@ -1,79 +1,119 @@
 import React, { useState, useContext } from 'react';
-import { TextField, Button, MenuItem, Grid } from '@mui/material';
+import { 
+  TextField, 
+  Button, 
+  MenuItem, 
+  Grid, 
+  Alert,
+  Box
+} from '@mui/material';
 import { TaskContext } from '../context/taskContext';
 
-const TaskForm = () => {
-const { addTask } = useContext(TaskContext);
+const TaskForm = ({ onTaskAdded }) => {
+  const { addTask } = useContext(TaskContext);
+  const [formError, setFormError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('pending');
-  const [priority, setPriority] = useState('medium');
-  const [dueDate, setDueDate] = useState('');
+  const [taskData, setTaskData] = useState({
+    title: '',
+    description: '',
+    status: 'todo',
+    priority: 'medium',
+    dueDate: '',
+  });
+
+  const handleChange = (e) => {
+    setTaskData({
+      ...taskData,
+      [e.target.name]: e.target.value,
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setSuccessMessage('');
 
-    const taskData = {
-      title,
-      description,
-      status,
-      priority,
-      dueDate,
-    };
+    if (!taskData.title.trim()) {
+      setFormError('Title is required');
+      return;
+    }
 
-    await addTask(taskData);
-
-    // Clear the form
-    setTitle('');
-    setDescription('');
-    setStatus('pending');
-    setPriority('medium');
-    setDueDate('');
+    try {
+      await addTask(taskData);
+      setSuccessMessage('Task added successfully!');
+      // Reset form
+      setTaskData({
+        title: '',
+        description: '',
+        status: 'todo',
+        priority: 'medium',
+        dueDate: '',
+      });
+      // Notify parent component
+      if (onTaskAdded) {
+        onTaskAdded();
+      }
+    } catch (err) {
+      setFormError('Failed to add task. Please try again.');
+      console.error('Error adding task:', err);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <Box component="form" onSubmit={handleSubmit} noValidate>
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}>
+        {formError && (
+          <Grid item xs={12}>
+            <Alert severity="error">{formError}</Alert>
+          </Grid>
+        )}
+        {successMessage && (
+          <Grid item xs={12}>
+            <Alert severity="success">{successMessage}</Alert>
+          </Grid>
+        )}
+        <Grid item xs={12}>
           <TextField
+            name="title"
             label="Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            value={taskData.title}
+            onChange={handleChange}
             fullWidth
             required
           />
         </Grid>
-
-        <Grid item xs={12} sm={6}>
+        <Grid item xs={12}>
           <TextField
+            name="description"
             label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={taskData.description}
+            onChange={handleChange}
             fullWidth
-            required
+            multiline
+            rows={3}
           />
         </Grid>
-
         <Grid item xs={12} sm={6}>
           <TextField
+            name="status"
             label="Status"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            value={taskData.status}
+            onChange={handleChange}
             select
             fullWidth
           >
-            <MenuItem value="pending">Pending</MenuItem>
+            <MenuItem value="todo">To Do</MenuItem>
             <MenuItem value="in-progress">In Progress</MenuItem>
-            <MenuItem value="completed">Completed</MenuItem>
+            <MenuItem value="done">Done</MenuItem>
           </TextField>
         </Grid>
-
         <Grid item xs={12} sm={6}>
           <TextField
+            name="priority"
             label="Priority"
-            value={priority}
-            onChange={(e) => setPriority(e.target.value)}
+            value={taskData.priority}
+            onChange={handleChange}
             select
             fullWidth
           >
@@ -82,27 +122,32 @@ const { addTask } = useContext(TaskContext);
             <MenuItem value="high">High</MenuItem>
           </TextField>
         </Grid>
-
         <Grid item xs={12}>
           <TextField
+            name="dueDate"
             label="Due Date"
             type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
+            value={taskData.dueDate}
+            onChange={handleChange}
             fullWidth
             InputLabelProps={{
               shrink: true,
             }}
           />
         </Grid>
-
         <Grid item xs={12}>
-          <Button variant="contained" color="primary" type="submit" fullWidth>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            type="submit" 
+            fullWidth
+            size="large"
+          >
             Add Task
           </Button>
         </Grid>
       </Grid>
-    </form>
+    </Box>
   );
 };
 
